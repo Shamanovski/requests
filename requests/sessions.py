@@ -10,6 +10,7 @@ requests (cookies, auth, proxies).
 import os
 import sys
 import time
+import logging
 from collections import Mapping
 from datetime import timedelta
 
@@ -22,7 +23,7 @@ from .hooks import default_hooks, dispatch_hook
 from ._internal_utils import to_native_string
 from .utils import to_key_val_list, default_headers
 from .exceptions import (
-    TooManyRedirects, InvalidSchema, ChunkedEncodingError, ContentDecodingError)
+    TooManyRedirects, InvalidSchema, ChunkedEncodingError, ContentDecodingError, ConnectionError, Timeout)
 
 from .structures import CaseInsensitiveDict
 from .adapters import HTTPAdapter
@@ -36,6 +37,8 @@ from .status_codes import codes
 
 # formerly defined here, reexposed here for backward compatibility
 from .models import REDIRECT_STATI
+
+logger = logging.getLogger('__main__')
 
 # Preferred clock, based on which one is more accurate on a given system.
 if sys.platform == 'win32':
@@ -446,7 +449,7 @@ class Session(SessionRedirectMixin):
     def request(self, method, url,
             params=None, data=None, headers=None, cookies=None, files=None,
             auth=None, timeout=None, allow_redirects=True, proxies=None,
-            hooks=None, stream=None, verify=None, cert=None, json=None):
+            hooks=None, stream=None, verify=None, cert=None, json=None, attempts=999):
         """Constructs a :class:`Request <Request>`, prepares it and sends it.
         Returns :class:`Response <Response>` object.
 
@@ -510,7 +513,21 @@ class Session(SessionRedirectMixin):
             'allow_redirects': allow_redirects,
         }
         send_kwargs.update(settings)
-        resp = self.send(prep, **send_kwargs)
+
+        ctr = 0
+        resp = None
+        while ctr < attempts:
+            try:
+                resp = self.send(prep, **send_kwargs)
+                break
+            except (ConnectionError, Timeout) as err:
+                ctr += 1
+                error = err
+                logger.error('%s %s', err, url)
+
+        if resp is None:
+            raise error
+
 
         return resp
 
