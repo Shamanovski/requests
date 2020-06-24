@@ -10,13 +10,9 @@ requests (cookies, auth, proxies).
 import os
 import sys
 import time
-<<<<<<< HEAD
-import logging
-from collections import Mapping
-=======
->>>>>>> 9ed5db8ed28e816b597dafd328b342ec95466afa
 from datetime import timedelta
 from collections import OrderedDict
+import logging
 
 from .auth import _basic_auth_str
 from .compat import cookielib, is_py3, urljoin, urlparse, Mapping
